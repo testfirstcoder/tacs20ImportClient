@@ -4,8 +4,6 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Tacs20ImportClient.JsonObjects;
@@ -46,13 +44,49 @@ namespace Tacs20ImportClient
                         SaveCollection<VariablenRef>(organisation.VariablenSetUrl);
                         SaveCollection<StatistikCodeRef>(organisation.StatistikCodeUrl);
                         SaveCollection<NutzniesserRef>(organisation.NutzniesserUrl);
+                        ProcessPersonalkategorien(organisation.PersonalkategorieUrl);
                     }
                 }
             }
         }
+
         #endregion
 
         #region private methods
+        private async void ProcessPersonalkategorien(string personalkategorieUrl)
+        {
+            var persKat = await GetCollection<PersonalkategorieNav>(personalkategorieUrl);
+            foreach (var personalkategorieNav in persKat)
+            {
+                SaveCollection<VariablenRef>(personalkategorieNav.VariablenUrl);
+                SaveCollection<NutzniesserRef>(personalkategorieNav.NutzniesserUrl);
+                SaveCollection<StatistikCodeRef>(personalkategorieNav.StatistikCodeUrl);
+            }
+        }
+
+        private async Task<IEnumerable<T>> GetCollection<T>(string url)
+        {
+            TokenResponse tokenResponse = await GetToken();
+            using (HttpClient client = GetClient(tokenResponse))
+            {
+                HttpResponseMessage response = await client.GetAsync(url);
+                // Wenn die URL korrekt ist, aber keine Daten vorhanden sind, returniert der Server 204
+                IEnumerable<T> result = null;
+                if (response.IsSuccessStatusCode && response.StatusCode != HttpStatusCode.NoContent)
+                {
+                    string content = await response.Content.ReadAsStringAsync();
+                    result = JsonConvert.DeserializeObject<IEnumerable<T>>(content);
+                    // Hier können die Daten gespeichert werden
+
+                    string length = GetContentLength(response);
+                    Console.WriteLine();
+                    Console.WriteLine($"{result.Count()} {typeof(T).Name} geholt");
+                    Console.WriteLine($"dies sind {length} bytes");
+                }
+                return result;
+            }
+        }
+
         private async void SaveCollection<T>(string url)
         {
             TokenResponse tokenResponse = await GetToken();

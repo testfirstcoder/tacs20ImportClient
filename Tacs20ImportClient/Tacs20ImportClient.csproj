@@ -54,6 +54,7 @@
     <Compile Include="JsonObjects\NutzniesserRef.cs" />
     <Compile Include="JsonObjects\Organisation.cs" />
     <Compile Include="JsonObjects\Personalkategorie.cs" />
+    <Compile Include="JsonObjects\PersonalkategorieNav.cs" />
     <Compile Include="JsonObjects\StatistikCodeImport.cs" />
     <Compile Include="JsonObjects\StatistikCodeRef.cs" />
     <Compile Include="JsonObjects\Variable.cs" />
