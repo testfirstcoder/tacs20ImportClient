@@ -50,6 +50,7 @@
     <Compile Include="ApiClient.cs" />
     <Compile Include="Credentials.cs" />
     <Compile Include="JsonObjects\BaseNavigation.cs" />
+    <Compile Include="JsonObjects\StatistikCodeImport.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TokenResponse.cs" />

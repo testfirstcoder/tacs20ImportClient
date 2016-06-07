@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -56,9 +57,23 @@ namespace Tacs20ImportClient
                 {
                     string content = await responseMessage.Content.ReadAsStringAsync();
                     var result = JsonConvert.DeserializeObject<BaseNavigation>(content);
-                    Console.WriteLine("Response from tacs");
-                    Console.WriteLine("==================");
-                    Console.WriteLine("==================");
+                    await SaveStatistikCode(result.StatistikCodeUrl);
+
+                }
+            }
+        }
+
+        private async Task SaveStatistikCode(string statistikCodeUrl)
+        {
+            var tokenResponse = await GetToken();
+            using (var client = GetClient(tokenResponse))
+            {
+                var response = await client.GetAsync(statistikCodeUrl);
+                if (response.IsSuccessStatusCode && response.StatusCode != HttpStatusCode.NoContent)
+                {
+                    string content = await response.Content.ReadAsStringAsync();
+                    var result = JsonConvert.DeserializeObject<IEnumerable<StatistikCodeImport>>(content);
+                    // here you can save the data
                 }
             }
         }
