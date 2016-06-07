@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -13,11 +14,89 @@ namespace Tacs20ImportClient
 {
     public class ApiClient
     {
+        #region fields
         private TokenResponse _currentToken;
         private DateTime _currentTokenExpiresAt;
         private readonly string _clientId = Credentials.ClientId;
         private readonly string _clientSecret = Credentials.ClientSecret;
         private readonly string _resource = Credentials.Resource;
+        #endregion
+
+        #region public methods
+        public async Task GetCompleteImport()
+        {
+            var tokenResponse = await GetToken();
+            using (var client = GetClient(tokenResponse))
+            {
+                var responseMessage = await client.GetAsync("api/v1");
+                if (responseMessage.IsSuccessStatusCode)
+                {
+                    string content = await responseMessage.Content.ReadAsStringAsync();
+                    var result = JsonConvert.DeserializeObject<BaseNavigation>(content);
+                    SaveCollection<StatistikCodeImport>(result.StatistikCodeUrl);
+                    SaveCollection<Nutzniesser>(result.NutzniesserUrl);
+                    SaveCollection<Personalkategorie>(result.PersonalkategorieUrl);
+                    SaveCollection<Variable>(result.VariablenUrl);
+
+                    IEnumerable<Organisation> organisations =
+                        await SaveAndReturnCollection<Organisation>(result.OrganisationUrl);
+
+                    foreach (var organisation in organisations)
+                    {
+                        SaveCollection<VariablenRef>(organisation.VariablenSetUrl);
+                        SaveCollection<StatistikCodeRef>(organisation.StatistikCodeUrl);
+                        SaveCollection<NutzniesserRef>(organisation.NutzniesserUrl);
+                    }
+                }
+            }
+        }
+        #endregion
+
+        #region private methods
+        private async void SaveCollection<T>(string url)
+        {
+            TokenResponse tokenResponse = await GetToken();
+            using (HttpClient client = GetClient(tokenResponse))
+            {
+                var response = await client.GetAsync(url);
+                // Wenn die URL korrekt ist, aber keine Daten vorhanden sind, returniert der Server 204
+                if (response.IsSuccessStatusCode && response.StatusCode != HttpStatusCode.NoContent)
+                {
+                    string content = await response.Content.ReadAsStringAsync();
+                    IEnumerable<T> result = JsonConvert.DeserializeObject<IEnumerable<T>>(content);
+                    // Hier können die Daten gespeichert werden
+
+                    string length = GetContentLength(response);
+                    Console.WriteLine();
+                    Console.WriteLine($"{result.Count()} {typeof(T).Name} geholt");
+                    Console.WriteLine($"dies sind {length} bytes");
+                }
+            }
+        }
+
+        private async Task<IEnumerable<T>> SaveAndReturnCollection<T>(string url)
+        {
+            TokenResponse tokenResponse = await GetToken();
+            using (var client = GetClient(tokenResponse))
+            {
+                var response = await client.GetAsync(url);
+                IEnumerable<T> result = new List<T>();
+                if (response.IsSuccessStatusCode && response.StatusCode != HttpStatusCode.NoContent)
+                {
+                    string content = await response.Content.ReadAsStringAsync();
+                    result = JsonConvert.DeserializeObject<IEnumerable<T>>(content);
+                    // here you can save the data
+
+                    string length = GetContentLength(response);
+                    Console.WriteLine();
+                    Console.WriteLine($"{result.Count()} Organisationen geholt");
+                    Console.WriteLine($"dies sind {length} bytes");
+                }
+
+                return result;
+            }
+
+        }
 
         private async Task<TokenResponse> GetToken()
         {
@@ -47,69 +126,6 @@ namespace Tacs20ImportClient
             return _currentToken;
         }
 
-        public async Task GetCompleteImport()
-        {
-            var tokenResponse = await GetToken();
-            using (var client = GetClient(tokenResponse))
-            {
-                var responseMessage = await client.GetAsync("api/v1");
-                if (responseMessage.IsSuccessStatusCode)
-                {
-                    string content = await responseMessage.Content.ReadAsStringAsync();
-                    var result = JsonConvert.DeserializeObject<BaseNavigation>(content);
-                    await SaveStatistikCode(result.StatistikCodeUrl);
-                    await SaveNutzniesser(result.NutzniesserUrl);
-                    await SavePersonalkategorie(result.PersonalkategorieUrl);
-
-                }
-            }
-        }
-
-        private async Task SavePersonalkategorie(string personalkategorieUrl)
-        {
-            var tokenResponse = await GetToken();
-            using (var client = GetClient(tokenResponse))
-            {
-                var response = await client.GetAsync(personalkategorieUrl);
-                if (response.IsSuccessStatusCode && response.StatusCode != HttpStatusCode.NoContent)
-                {
-                    string content = await response.Content.ReadAsStringAsync();
-                    var result = JsonConvert.DeserializeObject<IEnumerable<Personalkategorie>>(content);
-                    // here you can save the data
-                }
-            }
-        }
-
-        private async Task SaveNutzniesser(string nutzniesserUrl)
-        {
-            var tokenResponse = await GetToken();
-            using (var client = GetClient(tokenResponse))
-            {
-                var response = await client.GetAsync(nutzniesserUrl);
-                if (response.IsSuccessStatusCode && response.StatusCode != HttpStatusCode.NoContent)
-                {
-                    string content = await response.Content.ReadAsStringAsync();
-                    var result = JsonConvert.DeserializeObject<IEnumerable<StatistikCodeImport>>(content);
-                    // here you can save the data
-                }
-            }
-        }
-
-        private async Task SaveStatistikCode(string statistikCodeUrl)
-        {
-            var tokenResponse = await GetToken();
-            using (var client = GetClient(tokenResponse))
-            {
-                var response = await client.GetAsync(statistikCodeUrl);
-                if (response.IsSuccessStatusCode && response.StatusCode != HttpStatusCode.NoContent)
-                {
-                    string content = await response.Content.ReadAsStringAsync();
-                    var result = JsonConvert.DeserializeObject<IEnumerable<Nutzniesser>>(content);
-                    // here you can save the data
-                }
-            }
-        }
-
         private HttpClient GetClient(TokenResponse token)
         {
             string accessToken = token.AccessToken;
@@ -125,5 +141,14 @@ namespace Tacs20ImportClient
 
             return client;
         }
+
+        private static string GetContentLength(HttpResponseMessage response)
+        {
+            IEnumerable<string> contentLenght;
+            response.Content.Headers.TryGetValues("Content-Length", out contentLenght);
+            var length = contentLenght.First();
+            return length;
+        }
+        #endregion
     }
 }

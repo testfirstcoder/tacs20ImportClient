@@ -3,19 +3,14 @@
 namespace Tacs20ImportClient.JsonObjects
 {
     /// <summary>
-    /// Repräsentiert einen Nutzniesser
+    /// Eine Referenz auf einen Nutzniesser
     /// </summary>
-    public class Nutzniesser
+    public class NutzniesserRef
     {
-        #region properties
         /// <summary>
-        /// Die Identifikation des Nutzniessers
+        /// Der Code als Identifikation
         /// </summary>
         public string NutzniesserCode { get; set; }
-        /// <summary>
-        /// Bezeichnung des Nutzniessers
-        /// </summary>
-        public string Bezeichnung { get; set; }
         /// <summary>
         /// Ab wann dieser Nutzniesser bewirtschaftet werden kann
         /// </summary>
@@ -24,6 +19,5 @@ namespace Tacs20ImportClient.JsonObjects
         /// Bis wann dieser Nutzniesser bewirtschaftet werden kann. Wenn null, bis auf weiteres
         /// </summary>
         public DateTime? GueltigBis { get; set; }
-        #endregion
     }
 }
