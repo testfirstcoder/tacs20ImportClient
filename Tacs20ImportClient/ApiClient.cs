@@ -58,9 +58,26 @@ namespace Tacs20ImportClient
                     string content = await responseMessage.Content.ReadAsStringAsync();
                     var result = JsonConvert.DeserializeObject<BaseNavigation>(content);
                     await SaveStatistikCode(result.StatistikCodeUrl);
+                    await SaveNutzniesser(result.NutzniesserUrl);
 
                 }
             }
+        }
+
+        private async Task SaveNutzniesser(string nutzniesserUrl)
+        {
+            var tokenResponse = await GetToken();
+            using (var client = GetClient(tokenResponse))
+            {
+                var response = await client.GetAsync(nutzniesserUrl);
+                if (response.IsSuccessStatusCode && response.StatusCode != HttpStatusCode.NoContent)
+                {
+                    string content = await response.Content.ReadAsStringAsync();
+                    var result = JsonConvert.DeserializeObject<IEnumerable<StatistikCodeImport>>(content);
+                    // here you can save the data
+                }
+            }
+            throw new NotImplementedException();
         }
 
         private async Task SaveStatistikCode(string statistikCodeUrl)
@@ -72,7 +89,7 @@ namespace Tacs20ImportClient
                 if (response.IsSuccessStatusCode && response.StatusCode != HttpStatusCode.NoContent)
                 {
                     string content = await response.Content.ReadAsStringAsync();
-                    var result = JsonConvert.DeserializeObject<IEnumerable<StatistikCodeImport>>(content);
+                    var result = JsonConvert.DeserializeObject<IEnumerable<Nutzniesser>>(content);
                     // here you can save the data
                 }
             }

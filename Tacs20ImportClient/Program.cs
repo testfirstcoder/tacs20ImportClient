@@ -13,7 +13,7 @@ namespace Tacs20ImportClient
             ApiClient client = new ApiClient();
             client.GetCompleteImport().Wait();
 
-            Console.ReadLine();
+            Console.ReadKey();
         }
     }
 }

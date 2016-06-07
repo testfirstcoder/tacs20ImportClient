@@ -3,24 +3,24 @@
 namespace Tacs20ImportClient.JsonObjects
 {
     /// <summary>
-    /// Repräsentiert einen Statistikcode
+    /// Repräsentiert einen Nutzniesser
     /// </summary>
-    public class StatistikCodeImport
+    public class Nutzniesser
     {
         /// <summary>
-        /// Die Identifikation des Statistikcodes
+        /// Die Identifikation des Nutzniessers
         /// </summary>
-        public string StatistikCode { get; set; }
+        public string NutzniesserCode { get; set; }
         /// <summary>
-        /// Die Bezeichung des Statistikcodes
+        /// Bezeichnung des Nutzniessers
         /// </summary>
         public string Bezeichnung { get; set; }
         /// <summary>
-        /// Ab wann dieser Statistikcode bewirtschaftet werden kann
+        /// Ab wann dieser Nutzniesser bewirtschaftet werden kann
         /// </summary>
         public DateTime GueltigAb { get; set; }
         /// <summary>
-        /// Bis wann dieser StatusCode bewirtschaftet werden kann. Wenn null, bis auf weiteres
+        /// Bis wann dieser Nutzniesser bewirtschaftet werden kann. Wenn null, bis auf weiteres
         /// </summary>
         public DateTime? GueltigBis { get; set; }
     }
