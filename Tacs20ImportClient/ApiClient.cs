@@ -59,7 +59,23 @@ namespace Tacs20ImportClient
                     var result = JsonConvert.DeserializeObject<BaseNavigation>(content);
                     await SaveStatistikCode(result.StatistikCodeUrl);
                     await SaveNutzniesser(result.NutzniesserUrl);
+                    await SavePersonalkategorie(result.PersonalkategorieUrl);
 
+                }
+            }
+        }
+
+        private async Task SavePersonalkategorie(string personalkategorieUrl)
+        {
+            var tokenResponse = await GetToken();
+            using (var client = GetClient(tokenResponse))
+            {
+                var response = await client.GetAsync(personalkategorieUrl);
+                if (response.IsSuccessStatusCode && response.StatusCode != HttpStatusCode.NoContent)
+                {
+                    string content = await response.Content.ReadAsStringAsync();
+                    var result = JsonConvert.DeserializeObject<IEnumerable<Personalkategorie>>(content);
+                    // here you can save the data
                 }
             }
         }
@@ -77,7 +93,6 @@ namespace Tacs20ImportClient
                     // here you can save the data
                 }
             }
-            throw new NotImplementedException();
         }
 
         private async Task SaveStatistikCode(string statistikCodeUrl)

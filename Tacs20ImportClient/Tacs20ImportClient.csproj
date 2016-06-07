@@ -51,6 +51,7 @@
     <Compile Include="Credentials.cs" />
     <Compile Include="JsonObjects\BaseNavigation.cs" />
     <Compile Include="JsonObjects\Nutzniesser.cs" />
+    <Compile Include="JsonObjects\Personalkategorie.cs" />
     <Compile Include="JsonObjects\StatistikCodeImport.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
