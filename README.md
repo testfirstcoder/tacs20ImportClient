@@ -1,5 +1,5 @@
 # tacs20ImportClient
 
-Dies ist ein Beispielprojekt, welches illustrieren soll, wie die REST-Schnittstelle für den tacs-Import verwendet werden soll.
+Dies ist ein Beispielprojekt, wie die REST-Schnittstelle für den tacs&reg;-Import.
 
-Für weitere Informationen über die Methode tacs, besuchen sie bitte http://www.rodix.ch/
+Für weitere Informationen nehmen sie bitte Kontakt mit rodix&reg; auf. http://www.rodix.ch
