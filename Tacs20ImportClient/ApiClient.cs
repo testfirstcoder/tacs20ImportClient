@@ -55,6 +55,7 @@ namespace Tacs20ImportClient
         #region private methods
         private async void ProcessPersonalkategorien(string personalkategorieUrl)
         {
+            // Dies sind nur Navigationsobjekte. Deshalb macht es keinen Sinn, die zu speichern.
             var persKat = await GetCollection<PersonalkategorieNav>(personalkategorieUrl);
             foreach (var personalkategorieNav in persKat)
             {
