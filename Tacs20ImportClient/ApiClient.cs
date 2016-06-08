@@ -30,14 +30,18 @@ namespace Tacs20ImportClient
                 if (responseMessage.IsSuccessStatusCode)
                 {
                     string content = await responseMessage.Content.ReadAsStringAsync();
-                    var result = JsonConvert.DeserializeObject<BaseNavigation>(content);
-                    SaveCollection<StatistikCodeImport>(result.StatistikCodeUrl);
-                    SaveCollection<Nutzniesser>(result.NutzniesserUrl);
-                    SaveCollection<Personalkategorie>(result.PersonalkategorieUrl);
-                    SaveCollection<Variable>(result.VariablenUrl);
+                    var baseNavigation = JsonConvert.DeserializeObject<BaseNavigation>(content);
+                    var statistikCodes = await GetCollection<StatistikCodeImport>(baseNavigation.StatistikCodeUrl);
+
+
+
+                    SaveCollection<StatistikCodeImport>(baseNavigation.StatistikCodeUrl);
+                    SaveCollection<Nutzniesser>(baseNavigation.NutzniesserUrl);
+                    SaveCollection<Personalkategorie>(baseNavigation.PersonalkategorieUrl);
+                    SaveCollection<Variable>(baseNavigation.VariablenUrl);
 
                     IEnumerable<Organisation> organisations =
-                        await SaveAndReturnCollection<Organisation>(result.OrganisationUrl);
+                        await SaveAndReturnCollection<Organisation>(baseNavigation.OrganisationUrl);
 
                     foreach (var organisation in organisations)
                     {
@@ -47,9 +51,15 @@ namespace Tacs20ImportClient
                         ProcessPersonalkategorien(organisation.PersonalkategorieUrl);
                     }
 
-                    ProcessAnstellungen(result.AnstellungLink);
+                    ProcessAnstellungen(baseNavigation.AnstellungLink);
                 }
             }
+        }
+
+        private static void SaveData<T>(IEnumerable<T> data, string organisationsId = null, 
+                                        string personalKategorieId = null)
+        {
+            // Hier können die Daten gespeichert werden.
         }
 
         private async void ProcessAnstellungen(string anstellungLink)
