@@ -85,18 +85,18 @@ namespace Tacs20ImportClient
             {
                 HttpResponseMessage response = await client.GetAsync(url);
                 // Wenn die URL korrekt ist, aber keine Daten vorhanden sind, returniert der Server 204
-                IEnumerable<T> result = null;
+                IEnumerable<T> result = new List<T>(0);
                 if (response.IsSuccessStatusCode && response.StatusCode != HttpStatusCode.NoContent)
                 {
                     string content = await response.Content.ReadAsStringAsync();
                     result = JsonConvert.DeserializeObject<IEnumerable<T>>(content);
-                    // Hier können die Daten gespeichert werden
 
                     string length = GetContentLength(response);
                     Console.WriteLine();
                     Console.WriteLine($"{result.Count()} {typeof(T).Name} geholt");
                     Console.WriteLine($"dies sind {length} bytes");
                 }
+
                 return result;
             }
         }
