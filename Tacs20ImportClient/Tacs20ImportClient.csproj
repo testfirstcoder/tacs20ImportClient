@@ -49,6 +49,7 @@
   <ItemGroup>
     <Compile Include="ApiClient.cs" />
     <Compile Include="Credentials.cs" />
+    <Compile Include="JsonObjects\Anstellung.cs" />
     <Compile Include="JsonObjects\BaseNavigation.cs" />
     <Compile Include="JsonObjects\Nutzniesser.cs" />
     <Compile Include="JsonObjects\NutzniesserRef.cs" />

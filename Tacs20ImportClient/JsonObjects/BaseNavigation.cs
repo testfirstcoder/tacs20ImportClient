@@ -26,6 +26,11 @@
         /// URL zur Ressource, die alle Personalkategorien (-gruppe, -typ) des Mandanten zurückgibt
         /// </summary>
         public string PersonalkategorieUrl { get; set; }
+        /// <summary>
+        /// URL zur Ressource, die alle Anstellungen des Mandanten zurückgibt, die spezifische Variablen 
+        /// zugewiesen bekamen
+        /// </summary>
+        public string AnstellungLink { get; set; }
         #endregion
     }
 }

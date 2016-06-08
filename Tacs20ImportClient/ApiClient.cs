@@ -46,10 +46,23 @@ namespace Tacs20ImportClient
                         SaveCollection<NutzniesserRef>(organisation.NutzniesserUrl);
                         ProcessPersonalkategorien(organisation.PersonalkategorieUrl);
                     }
+
+                    ProcessAnstellungen(result.AnstellungLink);
                 }
             }
         }
 
+        private async void ProcessAnstellungen(string anstellungLink)
+        {
+            // Dies sind nur Navigationsobjekte. Deshalb macht es keinen Sinn, die zu speichern.
+            IEnumerable<Anstellung> anstellungen = await GetCollection<Anstellung>(anstellungLink);
+            foreach (var anstellung in anstellungen)
+            {
+                SaveCollection<VariablenRef>(anstellung.VariablenUrl);
+                SaveCollection<NutzniesserRef>(anstellung.NutzniesserUrl);
+                SaveCollection<StatistikCodeRef>(anstellung.StatistikCodeUrl);
+            }
+        }
         #endregion
 
         #region private methods

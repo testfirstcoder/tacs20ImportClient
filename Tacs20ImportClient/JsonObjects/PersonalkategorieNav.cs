@@ -6,6 +6,7 @@
     /// </summary>
     public class PersonalkategorieNav
     {
+        #region properties
         /// <summary>
         /// Die Tacs-Id zur Identifikation
         /// </summary>
@@ -25,5 +26,6 @@
         /// in einer bestimmten Organisation verwendet werden dürfen
         /// </summary>
         public string VariablenUrl { get; set; }
+        #endregion
     }
 }
