@@ -23,6 +23,7 @@ namespace Tacs20ImportClient
         #region public methods
         public async Task GetCompleteImport()
         {
+            Console.WriteLine("--- get complete import ---" + Environment.NewLine);
             var tokenResponse = await GetToken();
             using (var client = GetClient(tokenResponse))
             {
@@ -33,48 +34,21 @@ namespace Tacs20ImportClient
                     var baseNavigation = JsonConvert.DeserializeObject<BaseNavigation>(content);
 
                     // Mit bestimmten URLs der BaseNavigation der Grundkatalog abholen
-                    var statistikCodes = await GetCollection<StatistikCodeImport>(baseNavigation.StatistikCodeUrl);
-                    var nutzniesser = await GetCollection<Nutzniesser>(baseNavigation.NutzniesserUrl);
-                    var variablen = await GetCollection<Variable>(baseNavigation.VariablenUrl);
-                    var organisations = (await GetCollection<Organisation>(baseNavigation.OrganisationUrl)).ToList();
-                    SaveData(nutzniesser);
-                    SaveData(variablen);
-                    SaveData(statistikCodes);
-                    SaveData(organisations);
+                    var statistikCodes = GetCollection<StatistikCodeImport>(baseNavigation.StatistikCodeUrl);
+                    var nutzniesser = GetCollection<Nutzniesser>(baseNavigation.NutzniesserUrl);
+                    var variablen = GetCollection<Variable>(baseNavigation.VariablenUrl);
+                    var organisations = GetCollection<Organisation>(baseNavigation.OrganisationUrl);
+                    SaveData(await nutzniesser);
+                    SaveData(await variablen);
+                    SaveData(await statistikCodes);
+                    SaveData(await organisations);
 
                     // Zuweisungen der Variablen, Nutzniesser und Statistikcodes zu den Organisationen abholen
-                    ProcessOrganisations(organisations);
+                    ProcessOrganisations(await organisations);
 
                     // Zuweisungen der Variablen, Nutzniesser und Statistikcode zu einzelnen Anstellungen abholen
                     ProcessAnstellungen(baseNavigation.AnstellungLink);
                 }
-            }
-        }
-
-        /// <summary>
-        /// Stub-Methode, wo die Daten gespeichert werden könnten
-        /// </summary>
-        /// <typeparam name="T">Der Type der Daten, die gespeichert werden sollen</typeparam>
-        /// <param name="data">Die Liste mit den Daten, die gespeichert werden sollen</param>
-        /// <param name="organisationsId">Wird verwendet, wenn es sich um Zuweisungen zu Organsationen handelt,
-        /// die gespeichert werden sollen</param>
-        /// <param name="personalKategorieId">Wird verwendet, wenn es sich um Zuweisungen zu Personalkategorien
-        /// handelt, die gespeichert werden sollen</param>
-        private static void SaveData<T>(IEnumerable<T> data, string organisationsId = null, 
-                                        string personalKategorieId = null)
-        {
-            // Hier können die Daten gespeichert werden.
-        }
-
-        private async void ProcessAnstellungen(string anstellungLink)
-        {
-            // Dies sind nur Navigationsobjekte. Deshalb macht es keinen Sinn, die zu speichern.
-            IEnumerable<Anstellung> anstellungen = await GetCollection<Anstellung>(anstellungLink);
-            foreach (var anstellung in anstellungen)
-            {
-                SaveCollection<VariablenRef>(anstellung.VariablenUrl);
-                SaveCollection<NutzniesserRef>(anstellung.NutzniesserUrl);
-                SaveCollection<StatistikCodeRef>(anstellung.StatistikCodeUrl);
             }
         }
         #endregion
@@ -123,6 +97,34 @@ namespace Tacs20ImportClient
             }
         }
 
+        /// <summary>
+        /// Holt alle Zuweisungen der Variablen, Nutzniesser und Statistikcodes, die nur für einzelne 
+        /// Anstellungen gelten und speichert sie
+        /// </summary>
+        /// <param name="anstellungLink">Die URL unter welcher die Anstellungen mit separaten Zuweisungen 
+        /// zu finden sind</param>
+        private async void ProcessAnstellungen(string anstellungLink)
+        {
+            // Dies sind nur Navigationsobjekte. Deshalb macht es keinen Sinn, die zu speichern.
+            IEnumerable<Anstellung> anstellungen = await GetCollection<Anstellung>(anstellungLink);
+            foreach (var anstellung in anstellungen)
+            {
+                var variablenRef = await GetCollection<VariablenRef>(anstellung.VariablenUrl);
+                var nutzniesserRef = await GetCollection<NutzniesserRef>(anstellung.NutzniesserUrl);
+                var statistikCodeRef = await GetCollection<StatistikCodeRef>(anstellung.StatistikCodeUrl);
+
+                SaveData(variablenRef, anstellung.AnstellungsId);
+                SaveData(nutzniesserRef, anstellung.AnstellungsId);
+                SaveData(statistikCodeRef, anstellung.AnstellungsId);
+            }
+        }
+
+        /// <summary>
+        /// Liest die Daten von der REST-Schnittstelle, deserialisiert sie und gibt sie zurück
+        /// </summary>
+        /// <typeparam name="T">Der Type der Daten, die abgeholt werden sollen</typeparam>
+        /// <param name="url">Die URL, unter welcher die Daten zu finden sind</param>
+        /// <returns>Der deserialisierte JSON-Response, mindestens eine leere Liste</returns>
         private async Task<IEnumerable<T>> GetCollection<T>(string url)
         {
             TokenResponse tokenResponse = await GetToken();
@@ -144,6 +146,22 @@ namespace Tacs20ImportClient
 
                 return result;
             }
+        }
+
+        /// <summary>
+        /// Stub-Methode, wo die Daten gespeichert werden könnten
+        /// </summary>
+        /// <typeparam name="T">Der Type der Daten, die gespeichert werden sollen</typeparam>
+        /// <param name="data">Die Liste mit den Daten, die gespeichert werden sollen</param>
+        /// <param name="organisationOrAnstellungId">Wird verwendet, wenn es sich um Zuweisungen zu 
+        /// Organisationen oder Anstellungen handelt, die gespeichert werden sollen.
+        /// Diese Zusammenlegung  wurde aus Bequemlichkeit gewählt</param>
+        /// <param name="personalKategorieId">Wird verwendet, wenn es sich um Zuweisungen zu Personalkategorien
+        /// handelt, die gespeichert werden sollen</param>
+        private static void SaveData<T>(IEnumerable<T> data, string organisationOrAnstellungId = null, 
+                                        string personalKategorieId = null)
+        {
+            // Hier können die Daten gespeichert werden.
         }
 
         private async void SaveCollection<T>(string url)
