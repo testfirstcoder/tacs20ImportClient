@@ -31,23 +31,26 @@ namespace Tacs20ImportClient
                 {
                     string content = await responseMessage.Content.ReadAsStringAsync();
                     var baseNavigation = JsonConvert.DeserializeObject<BaseNavigation>(content);
+                    // Mit bestimmten URLs der BaseNavigation der Grundkatalog abholen
                     var statistikCodes = await GetCollection<StatistikCodeImport>(baseNavigation.StatistikCodeUrl);
+                    var nutzniesser = await GetCollection<Nutzniesser>(baseNavigation.NutzniesserUrl);
+                    var variablen = await GetCollection<Variable>(baseNavigation.VariablenUrl);
+                    var organisations = (await GetCollection<Organisation>(baseNavigation.OrganisationUrl)).ToList();
+                    SaveData(nutzniesser);
+                    SaveData(variablen);
+                    SaveData(statistikCodes);
+                    SaveData(organisations);
 
-
-
-                    SaveCollection<StatistikCodeImport>(baseNavigation.StatistikCodeUrl);
-                    SaveCollection<Nutzniesser>(baseNavigation.NutzniesserUrl);
-                    SaveCollection<Personalkategorie>(baseNavigation.PersonalkategorieUrl);
-                    SaveCollection<Variable>(baseNavigation.VariablenUrl);
-
-                    IEnumerable<Organisation> organisations =
-                        await SaveAndReturnCollection<Organisation>(baseNavigation.OrganisationUrl);
-
+                    // Zuweisungen der Variablen, Nutzniesser und Statistikcodes zu den Organisationen abholen
                     foreach (var organisation in organisations)
                     {
-                        SaveCollection<VariablenRef>(organisation.VariablenSetUrl);
-                        SaveCollection<StatistikCodeRef>(organisation.StatistikCodeUrl);
-                        SaveCollection<NutzniesserRef>(organisation.NutzniesserUrl);
+                        var variablenRef = await GetCollection<VariablenRef>(organisation.VariablenSetUrl);
+                        var statistikCodeRef = await GetCollection<StatistikCodeRef>(organisation.StatistikCodeUrl);
+                        var nutzniesserRef = await GetCollection<NutzniesserRef>(organisation.NutzniesserUrl);
+                        SaveData(variablenRef, organisation.OrganisationId);
+                        SaveData(statistikCodeRef, organisation.OrganisationId);
+                        SaveData(nutzniesserRef, organisation.OrganisationId);
+                        // Zuweisungen zu Personalkategorien innerhalb einer Organisation abholen
                         ProcessPersonalkategorien(organisation.PersonalkategorieUrl);
                     }
 
@@ -56,6 +59,15 @@ namespace Tacs20ImportClient
             }
         }
 
+        /// <summary>
+        /// Stub-Methode, wo die Daten gespeichert werden könnten
+        /// </summary>
+        /// <typeparam name="T">Der Type der Daten, die gespeichert werden sollen</typeparam>
+        /// <param name="data">Die Liste mit den Daten, die gespeichert werden sollen</param>
+        /// <param name="organisationsId">Wird verwendet, wenn es sich um Zuweisungen zu Organsationen handelt,
+        /// die gespeichert werden sollen</param>
+        /// <param name="personalKategorieId">Wird verwendet, wenn es sich um Zuweisungen zu Personalkategorien
+        /// handelt, die gespeichert werden sollen</param>
         private static void SaveData<T>(IEnumerable<T> data, string organisationsId = null, 
                                         string personalKategorieId = null)
         {
