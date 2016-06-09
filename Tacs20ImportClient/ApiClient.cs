@@ -31,6 +31,7 @@ namespace Tacs20ImportClient
                 {
                     string content = await responseMessage.Content.ReadAsStringAsync();
                     var baseNavigation = JsonConvert.DeserializeObject<BaseNavigation>(content);
+
                     // Mit bestimmten URLs der BaseNavigation der Grundkatalog abholen
                     var statistikCodes = await GetCollection<StatistikCodeImport>(baseNavigation.StatistikCodeUrl);
                     var nutzniesser = await GetCollection<Nutzniesser>(baseNavigation.NutzniesserUrl);
@@ -42,18 +43,9 @@ namespace Tacs20ImportClient
                     SaveData(organisations);
 
                     // Zuweisungen der Variablen, Nutzniesser und Statistikcodes zu den Organisationen abholen
-                    foreach (var organisation in organisations)
-                    {
-                        var variablenRef = await GetCollection<VariablenRef>(organisation.VariablenSetUrl);
-                        var statistikCodeRef = await GetCollection<StatistikCodeRef>(organisation.StatistikCodeUrl);
-                        var nutzniesserRef = await GetCollection<NutzniesserRef>(organisation.NutzniesserUrl);
-                        SaveData(variablenRef, organisation.OrganisationId);
-                        SaveData(statistikCodeRef, organisation.OrganisationId);
-                        SaveData(nutzniesserRef, organisation.OrganisationId);
-                        // Zuweisungen zu Personalkategorien innerhalb einer Organisation abholen
-                        ProcessPersonalkategorien(organisation.PersonalkategorieUrl);
-                    }
+                    ProcessOrganisations(organisations);
 
+                    // Zuweisungen der Variablen, Nutzniesser und Statistikcode zu einzelnen Anstellungen abholen
                     ProcessAnstellungen(baseNavigation.AnstellungLink);
                 }
             }
@@ -88,15 +80,46 @@ namespace Tacs20ImportClient
         #endregion
 
         #region private methods
-        private async void ProcessPersonalkategorien(string personalkategorieUrl)
+        /// <summary>
+        /// Holt alle Zuweisungen der Variablen, Nutzniesser und Statistikcodes zu den Organisationen ab 
+        /// und speichert sie
+        /// </summary>
+        /// <param name="organisations">Die Organisationen, dessen Zuweisungen abgeholt werden sollen</param>
+        private async void ProcessOrganisations(IEnumerable<Organisation> organisations)
+        {
+            foreach (var organisation in organisations)
+            {
+                var variablenRef = await GetCollection<VariablenRef>(organisation.VariablenSetUrl);
+                var statistikCodeRef = await GetCollection<StatistikCodeRef>(organisation.StatistikCodeUrl);
+                var nutzniesserRef = await GetCollection<NutzniesserRef>(organisation.NutzniesserUrl);
+                SaveData(variablenRef, organisation.OrganisationId);
+                SaveData(statistikCodeRef, organisation.OrganisationId);
+                SaveData(nutzniesserRef, organisation.OrganisationId);
+
+                // Zuweisungen zu Personalkategorien innerhalb einer Organisation abholen
+                ProcessPersonalkategorien(organisation.PersonalkategorieUrl, organisation.OrganisationId);
+            }
+        }
+
+        /// <summary>
+        /// Holt alle Zuweisungen der Variablen, Nutzniesser und Statistikcodes zu den Personalkategorien 
+        /// (-typ, -gruppe) und speichert sie
+        /// </summary>
+        /// <param name="personalkategorieUrl">Die URL, unter welcher die Personalkategorien abgeholt 
+        /// werden können</param>
+        /// <param name="organisationId">Der tacs-Code der Organisation, zu welcher die Personalkategorien gehören</param>
+        private async void ProcessPersonalkategorien(string personalkategorieUrl, string organisationId)
         {
             // Dies sind nur Navigationsobjekte. Deshalb macht es keinen Sinn, die zu speichern.
             var persKat = await GetCollection<PersonalkategorieNav>(personalkategorieUrl);
             foreach (var personalkategorieNav in persKat)
             {
-                SaveCollection<VariablenRef>(personalkategorieNav.VariablenUrl);
-                SaveCollection<NutzniesserRef>(personalkategorieNav.NutzniesserUrl);
-                SaveCollection<StatistikCodeRef>(personalkategorieNav.StatistikCodeUrl);
+                var variablenRef = await GetCollection<VariablenRef>(personalkategorieNav.VariablenUrl);
+                var nutzniesserRef = await GetCollection<NutzniesserRef>(personalkategorieNav.NutzniesserUrl);
+                var statistikCodeRef = await GetCollection<StatistikCodeRef>(personalkategorieNav.StatistikCodeUrl);
+                SaveData(variablenRef, organisationId, personalkategorieNav.PersonalkategorieId);
+                SaveData(nutzniesserRef, organisationId, personalkategorieNav.PersonalkategorieId);
+                SaveData(statistikCodeRef, organisationId, personalkategorieNav.PersonalkategorieId);
             }
         }
 
