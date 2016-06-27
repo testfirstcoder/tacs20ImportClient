@@ -44,14 +44,32 @@ namespace Tacs20ImportClient
                     var variablen = GetCollection<Variable>(baseNavigation.VariablenUrl);
                     var organisations = GetCollection<Organisation>(baseNavigation.OrganisationUrl);
 
+                    // Liste um alle Tasks zu synchronisieren.
+                    List<Task> allTasks = new List<Task>();
                     // Die Daten des Grundkatalogs speichern
-                    SaveData(await nutzniesser);
-                    SaveData(await variablen);
-                    SaveData(await statistikCodes);
-                    SaveData(await organisations);
+                    allTasks.Add(SaveData(nutzniesser));
+                    allTasks.Add(SaveData(variablen));
+                    allTasks.Add(SaveData(statistikCodes));
+                    allTasks.Add(SaveData(organisations));
 
                     // Zuweisungen der Variablen, Nutzniesser und Statistikcodes zu den Organisationen abholen
-                    ProcessOrganisations(await organisations);
+                    allTasks.Add(ProcessOrganisations(await organisations));
+
+                    Task.WaitAll(allTasks.ToArray());
+                }
+            }
+        }
+
+        public async Task GetEmploymentAssignments()
+        {
+            var tokenResponse = await GetToken();
+            using (var client = GetClient(tokenResponse))
+            {
+                var responseMessage = await client.GetAsync("api/v1");
+                if (responseMessage.IsSuccessStatusCode)
+                {
+                    string content = await responseMessage.Content.ReadAsStringAsync();
+                    var baseNavigation = JsonConvert.DeserializeObject<BaseNavigation>(content);
 
                     // Zuweisungen der Variablen, Nutzniesser und Statistikcode zu einzelnen Anstellungen abholen
                     ProcessAnstellungen(baseNavigation.AnstellungLink);
@@ -110,20 +128,25 @@ namespace Tacs20ImportClient
         /// und speichert sie
         /// </summary>
         /// <param name="organisations">Die Organisationen, dessen Zuweisungen abgeholt werden sollen</param>
-        private async void ProcessOrganisations(IEnumerable<Organisation> organisations)
+        private async Task ProcessOrganisations(IEnumerable<Organisation> organisations)
         {
+            var allTasks = new List<Task>();
             foreach (var organisation in organisations)
             {
                 var variablenRef = GetCollection<VariablenRef>(organisation.VariablenSetUrl);
                 var statistikCodeRef = GetCollection<StatistikCodeRef>(organisation.StatistikCodeUrl);
                 var nutzniesserRef = GetCollection<NutzniesserRef>(organisation.NutzniesserUrl);
-                SaveData(await variablenRef, organisation.OrganisationId);
-                SaveData(await statistikCodeRef, organisation.OrganisationId);
-                SaveData(await nutzniesserRef, organisation.OrganisationId);
+
+                allTasks.Add(SaveData(variablenRef, organisation.OrganisationId));
+                allTasks.Add(SaveData(statistikCodeRef, organisation.OrganisationId));
+                allTasks.Add(SaveData(nutzniesserRef, organisation.OrganisationId));
 
                 // Zuweisungen zu Personalkategorien innerhalb einer Organisation abholen
-                ProcessPersonalkategorien(organisation.PersonalkategorieUrl, organisation.OrganisationId);
+                allTasks.Add(ProcessPersonalkategorien(organisation.PersonalkategorieUrl, organisation.OrganisationId));
+
             }
+
+            Task.WaitAll(allTasks.ToArray());
         }
 
         /// <summary>
@@ -163,19 +186,24 @@ namespace Tacs20ImportClient
         /// <param name="personalkategorieUrl">Die URL, unter welcher die Personalkategorien abgeholt 
         /// werden können</param>
         /// <param name="organisationId">Der tacs-Code der Organisation, zu welcher die Personalkategorien gehören</param>
-        private async void ProcessPersonalkategorien(string personalkategorieUrl, string organisationId)
+        private async Task ProcessPersonalkategorien(string personalkategorieUrl, string organisationId)
         {
             // Dies sind nur Navigationsobjekte. Deshalb macht es keinen Sinn, die zu speichern.
             var persKat = await GetCollection<PersonalkategorieNav>(personalkategorieUrl);
+            var allTasks = new List<Task>();
             foreach (var personalkategorieNav in persKat)
             {
                 var variablenRef = GetCollection<VariablenRef>(personalkategorieNav.VariablenUrl);
                 var nutzniesserRef = GetCollection<NutzniesserRef>(personalkategorieNav.NutzniesserUrl);
                 var statistikCodeRef = GetCollection<StatistikCodeRef>(personalkategorieNav.StatistikCodeUrl);
-                SaveData(await variablenRef, organisationId, personalkategorieNav.PersonalkategorieId);
-                SaveData(await nutzniesserRef, organisationId, personalkategorieNav.PersonalkategorieId);
-                SaveData(await statistikCodeRef, organisationId, personalkategorieNav.PersonalkategorieId);
+
+                allTasks.Add(SaveData(variablenRef, organisationId, personalkategorieNav.PersonalkategorieId));
+                allTasks.Add(SaveData(nutzniesserRef, organisationId, personalkategorieNav.PersonalkategorieId));
+                allTasks.Add(SaveData(statistikCodeRef, organisationId, personalkategorieNav.PersonalkategorieId));
+
             }
+
+            Task.WaitAll(allTasks.ToArray());
         }
 
         /// <summary>
@@ -219,9 +247,9 @@ namespace Tacs20ImportClient
             IEnumerable<Anstellung> anstellungen = await GetCollection<Anstellung>(anstellungLink);
             foreach (var anstellung in anstellungen)
             {
-                var variablenRef = await GetCollection<VariablenRef>(anstellung.VariablenUrl);
-                var nutzniesserRef = await GetCollection<NutzniesserRef>(anstellung.NutzniesserUrl);
-                var statistikCodeRef = await GetCollection<StatistikCodeRef>(anstellung.StatistikCodeUrl);
+                var variablenRef = GetCollection<VariablenRef>(anstellung.VariablenUrl);
+                var nutzniesserRef = GetCollection<NutzniesserRef>(anstellung.NutzniesserUrl);
+                var statistikCodeRef = GetCollection<StatistikCodeRef>(anstellung.StatistikCodeUrl);
 
                 SaveData(variablenRef, anstellung.AnstellungsId);
                 SaveData(nutzniesserRef, anstellung.AnstellungsId);
@@ -295,9 +323,10 @@ namespace Tacs20ImportClient
         /// Diese Zusammenlegung  wurde aus Bequemlichkeit gewählt</param>
         /// <param name="personalKategorieId">Wird verwendet, wenn es sich um Zuweisungen zu Personalkategorien
         /// handelt, die gespeichert werden sollen</param>
-        private static void SaveData<T>(IEnumerable<T> data, string organisationOrAnstellungId = null,
+        private static async Task SaveData<T>(Task<IEnumerable<T>> data, string organisationOrAnstellungId = null,
                                         string personalKategorieId = null)
         {
+            await data;
             // Hier können die Daten gespeichert werden.
         }
 

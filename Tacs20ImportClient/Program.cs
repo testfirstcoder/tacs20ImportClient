@@ -11,8 +11,16 @@ namespace Tacs20ImportClient
         static void Main(string[] args)
         {
             ApiClient client = new ApiClient();
-            Console.WriteLine("--- get complete import ---" + Environment.NewLine);
+
+            // Zuerst wird die Grundkonfiguration durch den tacsSuperUser erstellt.
+            Console.WriteLine("--- get base configuration (full) ---" + Environment.NewLine);
             client.GetCompleteImport().Wait();
+            Console.WriteLine("--- Hier erfolgt der erste Export und die Zuweisungen zu den Anstellungen ---");
+            Console.WriteLine("--- Press any key to continue ---");
+            Console.ReadKey();
+
+            Console.WriteLine("--- Nun werden die Zuweisungen zu den Anstellungen importiert ---");
+            client.GetEmploymentAssignments().Wait();
             Console.WriteLine("--- initial import completed ---" + Environment.NewLine);
 
             DateTime changesSince = new DateTime(2016, 05, 15);
