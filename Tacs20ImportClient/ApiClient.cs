@@ -60,6 +60,11 @@ namespace Tacs20ImportClient
             }
         }
 
+        /// <summary>
+        /// Nach dem ersten Export der Anstellungen können in der Administration Zuweisungen zu einzelnen 
+        /// Anstellungen vorgenommen werden. Sobald das geschehen ist, können diese Zuweisungen importiert werden.
+        /// </summary>
+        /// <returns>Ein Task für die Asynchronität</returns>
         public async Task GetEmploymentAssignments()
         {
             var tokenResponse = await GetToken();
@@ -170,9 +175,16 @@ namespace Tacs20ImportClient
             foreach (var organisation in organisations)
             {
                 // Den URLs den Query-Parameter changesSince hinzufügen
-                var variablenUrl = AddChangesSince(organisation.VariablenSetUrl, changesSince);
-                var statistikCodeUrl = AddChangesSince(organisation.StatistikCodeUrl, changesSince);
-                var nutzniesserUrl = AddChangesSince(organisation.NutzniesserUrl, changesSince);
+                // Wenn es keine Änderungen gibt, ist die URL nicht belegt (wird in einer späteren Version implementiert)
+                var variablenUrl = string.IsNullOrEmpty(organisation.VariablenSetUrl)
+                    ? null
+                    : AddChangesSince(organisation.VariablenSetUrl, changesSince);
+                var statistikCodeUrl = string.IsNullOrEmpty(organisation.StatistikCodeUrl)
+                    ? null
+                    : AddChangesSince(organisation.StatistikCodeUrl, changesSince);
+                var nutzniesserUrl = string.IsNullOrEmpty(organisation.NutzniesserUrl)
+                    ? null
+                    : AddChangesSince(organisation.NutzniesserUrl, changesSince);
 
                 // Die Änderungen seit changesSince abholen
                 var variablenRef = GetCollection<VariablenRef>(variablenUrl);
@@ -240,9 +252,16 @@ namespace Tacs20ImportClient
             {
 
                 // Den URLs den Query-Parameter changesSince hinzufügen
-                var variablenUrl = AddChangesSince(nav.VariablenUrl, changesSince);
-                var nutzniesserUrl = AddChangesSince(nav.NutzniesserUrl, changesSince);
-                var statistikCodeUrl = AddChangesSince(nav.StatistikCodeUrl, changesSince);
+                // Wenn es keine Änderungen gibt, ist die URL nicht belegt (wird in einer späteren Version implementiert)
+                var variablenUrl = string.IsNullOrEmpty(nav.VariablenUrl)
+                    ? null
+                    : AddChangesSince(nav.VariablenUrl, changesSince);
+                var nutzniesserUrl = string.IsNullOrEmpty(nav.NutzniesserUrl)
+                    ? null
+                    : AddChangesSince(nav.NutzniesserUrl, changesSince);
+                var statistikCodeUrl = string.IsNullOrEmpty(nav.StatistikCodeUrl)
+                    ? null
+                    : AddChangesSince(nav.StatistikCodeUrl, changesSince);
 
                 // Die Änderungen seit changesSince abholen
                 var variablenRef = GetCollection<VariablenRef>(variablenUrl);
@@ -305,9 +324,16 @@ namespace Tacs20ImportClient
             foreach (var anstellung in anstellungen)
             {
                 // Den URLs den Query-Parameter changesSince hinzufügen
-                var variablenUrl = AddChangesSince(anstellung.VariablenUrl, changesSince);
-                var nutzniesserUrl = AddChangesSince(anstellung.NutzniesserUrl, changesSince);
-                var statistikCodeUrl = AddChangesSince(anstellung.StatistikCodeUrl, changesSince);
+                // Wenn es keine Änderungen gibt, ist die URL nicht belegt (wird in einer späteren Version implementiert)
+                var variablenUrl = string.IsNullOrEmpty(anstellung.VariablenUrl)
+                    ? null
+                    : AddChangesSince(anstellung.VariablenUrl, changesSince);
+                var nutzniesserUrl = string.IsNullOrEmpty(anstellung.NutzniesserUrl)
+                    ? null
+                    : AddChangesSince(anstellung.NutzniesserUrl, changesSince);
+                var statistikCodeUrl = string.IsNullOrEmpty(anstellung.StatistikCodeUrl)
+                    ? null
+                    : AddChangesSince(anstellung.StatistikCodeUrl, changesSince);
 
                 // Die Änderungen seit changesSince abholen
                 var variablenRef = GetCollection<VariablenRef>(variablenUrl);
@@ -331,12 +357,15 @@ namespace Tacs20ImportClient
         /// <returns>Der deserialisierte JSON-Response, mindestens eine leere Liste</returns>
         private async Task<IEnumerable<T>> GetCollection<T>(string url)
         {
+            IEnumerable<T> result = new List<T>(0);
+            // Wenn die URL nicht gesetzt ist, gibt es keine Daten unter der Ressource
+            if (string.IsNullOrEmpty(url)) return result;
+
             TokenResponse tokenResponse = await GetToken();
             using (HttpClient client = GetClient(tokenResponse))
             {
                 HttpResponseMessage response = await client.GetAsync(url);
                 // Wenn die URL korrekt ist, aber keine Daten vorhanden sind, returniert der Server 204
-                IEnumerable<T> result = new List<T>(0);
                 if (response.IsSuccessStatusCode && response.StatusCode != HttpStatusCode.NoContent)
                 {
                     string content = await response.Content.ReadAsStringAsync();
@@ -348,8 +377,8 @@ namespace Tacs20ImportClient
                     Console.WriteLine($"dies sind {length} bytes");
                 }
 
-                return result;
             }
+            return result;
         }
 
         /// <summary>
