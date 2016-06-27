@@ -53,7 +53,7 @@ namespace Tacs20ImportClient
                     allTasks.Add(SaveData(organisations));
 
                     // Zuweisungen der Variablen, Nutzniesser und Statistikcodes zu den Organisationen abholen
-                    allTasks.Add(ProcessOrganisations(await organisations));
+                    ProcessOrganisations(await organisations);
 
                     Task.WaitAll(allTasks.ToArray());
                 }
@@ -106,17 +106,21 @@ namespace Tacs20ImportClient
                     var variablen = GetCollection<Variable>(variablenUrl);
                     var organisations = GetCollection<Organisation>(organisationsUrl);
 
+                    // Liste um alle Tasks zu synchronisieren.
+                    var allTasks = new List<Task>();
                     // Die alten Daten löschen (oder deaktivieren) und mit den Änderungen ersetzen
-                    DeleteAndSave(await statistikCodes);
-                    DeleteAndSave(await nutzniesser);
-                    DeleteAndSave(await variablen);
-                    DeleteAndSave(await organisations);
+                    allTasks.Add(DeleteAndSave(statistikCodes));
+                    allTasks.Add(DeleteAndSave(nutzniesser));
+                    allTasks.Add(DeleteAndSave(variablen));
+                    allTasks.Add(DeleteAndSave(organisations));
 
                     // Zuweisungen der Variablen, Nutzniesser und Statistikcodes zu den Organisationen abholen
                     ProcessOrganisations(await organisations, changesSince);
 
                     // Zuweisungen der Variablen, Nutzniesser und Statistikcode zu einzelnen Anstellungen abholen
-                    ProcessAnstellungen(baseNavigation.AnstellungLink, changesSince);
+                    allTasks.Add(ProcessAnstellungen(baseNavigation.AnstellungLink, changesSince));
+
+                    Task.WaitAll(allTasks.ToArray());
                 }
             }
         }
@@ -128,16 +132,18 @@ namespace Tacs20ImportClient
         /// und speichert sie
         /// </summary>
         /// <param name="organisations">Die Organisationen, dessen Zuweisungen abgeholt werden sollen</param>
-        private async Task ProcessOrganisations(IEnumerable<Organisation> organisations)
+        private void ProcessOrganisations(IEnumerable<Organisation> organisations)
         {
             // Liste um alle Tasks zu synchronisieren.
             var allTasks = new List<Task>();
             foreach (var organisation in organisations)
             {
+                // Die Zuweisungen vom Server holen
                 var variablenRef = GetCollection<VariablenRef>(organisation.VariablenSetUrl);
                 var statistikCodeRef = GetCollection<StatistikCodeRef>(organisation.StatistikCodeUrl);
                 var nutzniesserRef = GetCollection<NutzniesserRef>(organisation.NutzniesserUrl);
 
+                // Die Daten speichern
                 allTasks.Add(SaveData(variablenRef, organisation.OrganisationId));
                 allTasks.Add(SaveData(statistikCodeRef, organisation.OrganisationId));
                 allTasks.Add(SaveData(nutzniesserRef, organisation.OrganisationId));
@@ -156,8 +162,11 @@ namespace Tacs20ImportClient
         /// </summary>
         /// <param name="organisations">Die Organisationen, dessen Zuweisungen abgeholt werden sollen</param>
         /// <param name="changesSince">Das Datum der letzten Synchronisation</param>
-        private async void ProcessOrganisations(IEnumerable<Organisation> organisations, DateTime changesSince)
+        private void ProcessOrganisations(IEnumerable<Organisation> organisations, DateTime changesSince)
         {
+            // Liste um alle Tasks zu synchronisieren.
+            var allTasks = new List<Task>();
+
             foreach (var organisation in organisations)
             {
                 // Den URLs den Query-Parameter changesSince hinzufügen
@@ -171,13 +180,16 @@ namespace Tacs20ImportClient
                 var statistikCodeRef = GetCollection<StatistikCodeRef>(statistikCodeUrl);
 
                 // Die alten Daten löschen (oder deaktivieren) und mit den Änderungen ersetzen
-                DeleteAndSave(await variablenRef, organisation.OrganisationId);
-                DeleteAndSave(await nutzniesserRef, organisation.OrganisationId);
-                DeleteAndSave(await statistikCodeRef, organisation.OrganisationId);
+                allTasks.Add(DeleteAndSave(variablenRef, organisation.OrganisationId));
+                allTasks.Add(DeleteAndSave(nutzniesserRef, organisation.OrganisationId));
+                allTasks.Add(DeleteAndSave(statistikCodeRef, organisation.OrganisationId));
 
                 // Zuweisungen zu Personalkategorien innerhalb einer Organisation abholen
-                ProcessPersonalkategorien(organisation.PersonalkategorieUrl, organisation.OrganisationId, changesSince);
+                allTasks.Add(ProcessPersonalkategorien(organisation.PersonalkategorieUrl, organisation.OrganisationId,
+                    changesSince));
             }
+
+            Task.WaitAll(allTasks.ToArray());
         }
 
         /// <summary>
@@ -195,14 +207,15 @@ namespace Tacs20ImportClient
             var allTasks = new List<Task>();
             foreach (var personalkategorieNav in persKat)
             {
+                // Die Zuweisungen vom Server holen
                 var variablenRef = GetCollection<VariablenRef>(personalkategorieNav.VariablenUrl);
                 var nutzniesserRef = GetCollection<NutzniesserRef>(personalkategorieNav.NutzniesserUrl);
                 var statistikCodeRef = GetCollection<StatistikCodeRef>(personalkategorieNav.StatistikCodeUrl);
 
+                // Die Daten speichern
                 allTasks.Add(SaveData(variablenRef, organisationId, personalkategorieNav.PersonalkategorieId));
                 allTasks.Add(SaveData(nutzniesserRef, organisationId, personalkategorieNav.PersonalkategorieId));
                 allTasks.Add(SaveData(statistikCodeRef, organisationId, personalkategorieNav.PersonalkategorieId));
-
             }
 
             Task.WaitAll(allTasks.ToArray());
@@ -216,25 +229,33 @@ namespace Tacs20ImportClient
         /// werden können</param>
         /// <param name="organisationId">Der tacs-Code der Organisation, zu welcher die Personalkategorien gehören</param>
         /// <param name="changesSince">Das Datum der letzten Synchronisation</param>
-        private async void ProcessPersonalkategorien(string personalkategorieUrl, string organisationId, DateTime changesSince)
+        private async Task ProcessPersonalkategorien(string personalkategorieUrl, string organisationId, DateTime changesSince)
         {
             personalkategorieUrl = AddChangesSince(personalkategorieUrl, changesSince);
             var persKat = await GetCollection<PersonalkategorieNav>(personalkategorieUrl);
 
+            // Liste um alle Tasks zu synchronisieren.
+            var allTasks = new List<Task>();
             foreach (var nav in persKat)
             {
+
+                // Den URLs den Query-Parameter changesSince hinzufügen
                 var variablenUrl = AddChangesSince(nav.VariablenUrl, changesSince);
                 var nutzniesserUrl = AddChangesSince(nav.NutzniesserUrl, changesSince);
                 var statistikCodeUrl = AddChangesSince(nav.StatistikCodeUrl, changesSince);
 
+                // Die Änderungen seit changesSince abholen
                 var variablenRef = GetCollection<VariablenRef>(variablenUrl);
                 var nutzniesserRef = GetCollection<NutzniesserRef>(nutzniesserUrl);
                 var statistikCode = GetCollection<StatistikCodeRef>(statistikCodeUrl);
 
-                DeleteAndSave(await variablenRef, organisationId, nav.PersonalkategorieId);
-                DeleteAndSave(await nutzniesserRef, organisationId, nav.PersonalkategorieId);
-                DeleteAndSave(await statistikCode, organisationId, nav.PersonalkategorieId);
+                // Die alten Daten löschen (oder deaktivieren) und mit den Änderungen ersetzen
+                allTasks.Add(DeleteAndSave(variablenRef, organisationId, nav.PersonalkategorieId));
+                allTasks.Add(DeleteAndSave(nutzniesserRef, organisationId, nav.PersonalkategorieId));
+                allTasks.Add(DeleteAndSave(statistikCode, organisationId, nav.PersonalkategorieId));
             }
+
+            Task.WaitAll(allTasks.ToArray());
         }
 
         /// <summary>
@@ -252,10 +273,12 @@ namespace Tacs20ImportClient
             List<Task> allTasks = new List<Task>();
             foreach (var anstellung in anstellungen)
             {
+                // Die Zuweisungen vom Server holen
                 var variablenRef = GetCollection<VariablenRef>(anstellung.VariablenUrl);
                 var nutzniesserRef = GetCollection<NutzniesserRef>(anstellung.NutzniesserUrl);
                 var statistikCodeRef = GetCollection<StatistikCodeRef>(anstellung.StatistikCodeUrl);
 
+                // Die Daten speichern
                 allTasks.Add(SaveData(variablenRef, anstellung.AnstellungsId));
                 allTasks.Add(SaveData(nutzniesserRef, anstellung.AnstellungsId));
                 allTasks.Add(SaveData(statistikCodeRef, anstellung.AnstellungsId));
@@ -271,24 +294,33 @@ namespace Tacs20ImportClient
         /// <param name="anstellungLink">Die URL unter welcher die Anstellungen mit separaten Zuweisungen 
         /// zu finden sind</param>
         /// <param name="changesSince">Das Datum der letzten Synchronisation</param>
-        private async void ProcessAnstellungen(string anstellungLink, DateTime changesSince)
+        private async Task ProcessAnstellungen(string anstellungLink, DateTime changesSince)
         {
+            // Anstellungen sind nur Navigationsobjekte. Deshalb macht es keinen Sinn, die zu speichern.
             anstellungLink = AddChangesSince(anstellungLink, changesSince);
             var anstellungen = await GetCollection<Anstellung>(anstellungLink);
+
+            // Liste um alle Tasks zu synchronisieren.
+            var allTasks = new List<Task>();
             foreach (var anstellung in anstellungen)
             {
+                // Den URLs den Query-Parameter changesSince hinzufügen
                 var variablenUrl = AddChangesSince(anstellung.VariablenUrl, changesSince);
                 var nutzniesserUrl = AddChangesSince(anstellung.NutzniesserUrl, changesSince);
                 var statistikCodeUrl = AddChangesSince(anstellung.StatistikCodeUrl, changesSince);
 
+                // Die Änderungen seit changesSince abholen
                 var variablenRef = GetCollection<VariablenRef>(variablenUrl);
                 var nutzniesserRef = GetCollection<NutzniesserRef>(nutzniesserUrl);
                 var statistikCodeRef = GetCollection<StatistikCodeRef>(statistikCodeUrl);
 
-                DeleteAndSave(await variablenRef, anstellung.AnstellungsId);
-                DeleteAndSave(await nutzniesserRef, anstellung.AnstellungsId);
-                DeleteAndSave(await statistikCodeRef, anstellung.AnstellungsId);
+                // Die alten Daten löschen (oder deaktivieren) und mit den Änderungen ersetzen
+                allTasks.Add(DeleteAndSave(variablenRef, anstellung.AnstellungsId));
+                allTasks.Add(DeleteAndSave(nutzniesserRef, anstellung.AnstellungsId));
+                allTasks.Add(DeleteAndSave(statistikCodeRef, anstellung.AnstellungsId));
             }
+
+            Task.WaitAll(allTasks.ToArray());
         }
 
         /// <summary>
@@ -333,8 +365,8 @@ namespace Tacs20ImportClient
         private static async Task SaveData<T>(Task<IEnumerable<T>> data, string organisationOrAnstellungId = null,
                                         string personalKategorieId = null)
         {
-            await data;
             // Hier können die Daten gespeichert werden.
+            await data;
         }
 
 
@@ -348,11 +380,12 @@ namespace Tacs20ImportClient
         /// Diese Zusammenlegung  wurde aus Bequemlichkeit gewählt</param>
         /// <param name="personalKategorieId">Wird verwendet, wenn es sich um Zuweisungen zu Personalkategorien
         /// handelt, die gespeichert werden sollen</param>
-        private static void DeleteAndSave<T>(IEnumerable<T> data, string organisationOrAnstellungId = null,
+        private static async Task DeleteAndSave<T>(Task<IEnumerable<T>> data, string organisationOrAnstellungId = null,
                                       string personalKategorieId = null)
         {
             // Hier können die Daten, die aktualisiert werden sollen, gelöscht oder deaktiviert 
             // und die neuen gespeichert werden
+            await data;
         }
 
         private static string AddChangesSince(string statistikCodeUrl, DateTime changesSince)

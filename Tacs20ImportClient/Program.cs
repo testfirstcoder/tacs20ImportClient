@@ -18,6 +18,7 @@ namespace Tacs20ImportClient
             Console.WriteLine("--- Hier erfolgt der erste Export und die Zuweisungen zu den Anstellungen ---");
             Console.WriteLine("--- Press any key to continue ---");
             Console.ReadKey();
+            Console.WriteLine();
 
             Console.WriteLine("--- Nun werden die Zuweisungen zu den Anstellungen importiert ---");
             client.GetEmploymentAssignments().Wait();
@@ -25,9 +26,10 @@ namespace Tacs20ImportClient
             Console.WriteLine("--- Ab jetzt müssen nur noch die Änderungen importiert werden ---");
             Console.WriteLine("--- Press any key to continue ---");
             Console.ReadKey();
+            Console.WriteLine();
 
             DateTime changesSince = new DateTime(2016, 05, 15);
-            Console.WriteLine($"--- get changes since {changesSince} ---" + Environment.NewLine);
+            Console.WriteLine($"--- Import der Änderungen seit {changesSince} ---" + Environment.NewLine);
             client.GetChanges(changesSince).Wait();
             Console.WriteLine("--- import of changes completed ---" + Environment.NewLine);
 
