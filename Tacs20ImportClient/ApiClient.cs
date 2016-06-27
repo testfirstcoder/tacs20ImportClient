@@ -72,7 +72,7 @@ namespace Tacs20ImportClient
                     var baseNavigation = JsonConvert.DeserializeObject<BaseNavigation>(content);
 
                     // Zuweisungen der Variablen, Nutzniesser und Statistikcode zu einzelnen Anstellungen abholen
-                    ProcessAnstellungen(baseNavigation.AnstellungLink);
+                    ProcessAnstellungen(baseNavigation.AnstellungLink).Wait();
                 }
             }
         }
@@ -130,6 +130,7 @@ namespace Tacs20ImportClient
         /// <param name="organisations">Die Organisationen, dessen Zuweisungen abgeholt werden sollen</param>
         private async Task ProcessOrganisations(IEnumerable<Organisation> organisations)
         {
+            // Liste um alle Tasks zu synchronisieren.
             var allTasks = new List<Task>();
             foreach (var organisation in organisations)
             {
@@ -188,8 +189,9 @@ namespace Tacs20ImportClient
         /// <param name="organisationId">Der tacs-Code der Organisation, zu welcher die Personalkategorien gehören</param>
         private async Task ProcessPersonalkategorien(string personalkategorieUrl, string organisationId)
         {
-            // Dies sind nur Navigationsobjekte. Deshalb macht es keinen Sinn, die zu speichern.
+            // Personalkategorien sind nur Navigationsobjekte. Deshalb macht es keinen Sinn, die zu speichern.
             var persKat = await GetCollection<PersonalkategorieNav>(personalkategorieUrl);
+            // Liste um alle Tasks zu synchronisieren.
             var allTasks = new List<Task>();
             foreach (var personalkategorieNav in persKat)
             {
@@ -241,20 +243,25 @@ namespace Tacs20ImportClient
         /// </summary>
         /// <param name="anstellungLink">Die URL unter welcher die Anstellungen mit separaten Zuweisungen 
         /// zu finden sind</param>
-        private async void ProcessAnstellungen(string anstellungLink)
+        private async Task ProcessAnstellungen(string anstellungLink)
         {
-            // Dies sind nur Navigationsobjekte. Deshalb macht es keinen Sinn, die zu speichern.
+            // Anstellungen sind nur Navigationsobjekte. Deshalb macht es keinen Sinn, die zu speichern.
             IEnumerable<Anstellung> anstellungen = await GetCollection<Anstellung>(anstellungLink);
+
+            // Liste um alle Tasks zu synchronisieren.
+            List<Task> allTasks = new List<Task>();
             foreach (var anstellung in anstellungen)
             {
                 var variablenRef = GetCollection<VariablenRef>(anstellung.VariablenUrl);
                 var nutzniesserRef = GetCollection<NutzniesserRef>(anstellung.NutzniesserUrl);
                 var statistikCodeRef = GetCollection<StatistikCodeRef>(anstellung.StatistikCodeUrl);
 
-                SaveData(variablenRef, anstellung.AnstellungsId);
-                SaveData(nutzniesserRef, anstellung.AnstellungsId);
-                SaveData(statistikCodeRef, anstellung.AnstellungsId);
+                allTasks.Add(SaveData(variablenRef, anstellung.AnstellungsId));
+                allTasks.Add(SaveData(nutzniesserRef, anstellung.AnstellungsId));
+                allTasks.Add(SaveData(statistikCodeRef, anstellung.AnstellungsId));
             }
+
+            Task.WaitAll(allTasks.ToArray());
         }
 
         /// <summary>
