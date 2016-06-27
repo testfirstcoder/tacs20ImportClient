@@ -6,6 +6,7 @@
     /// </summary>
     public class Organisation
     {
+        #region properties
         /// <summary>
         /// Der eindeutige Tacs-Code
         /// </summary>
@@ -33,5 +34,6 @@
         /// ihren Leistungen zuweisen können
         /// </summary>
         public string NutzniesserUrl { get; set; }
+        #endregion
     }
 }

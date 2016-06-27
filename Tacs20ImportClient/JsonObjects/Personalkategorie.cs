@@ -5,6 +5,7 @@
     /// </summary>
     public class Personalkategorie
     {
+        #region properties
         /// <summary>
         /// Die eindeutige Tacs-Id
         /// </summary>
@@ -17,5 +18,6 @@
         /// Damit können die Kategorien sortiert dargestellt werden
         /// </summary>
         public int SortierNummer { get; set; }
+        #endregion
     }
 }

@@ -7,6 +7,7 @@ namespace Tacs20ImportClient.JsonObjects
     /// </summary>
     public class NutzniesserRef
     {
+        #region properties
         /// <summary>
         /// Der Code als Identifikation
         /// </summary>
@@ -19,5 +20,6 @@ namespace Tacs20ImportClient.JsonObjects
         /// Bis wann dieser Nutzniesser bewirtschaftet werden kann. Wenn null, bis auf weiteres
         /// </summary>
         public DateTime? GueltigBis { get; set; }
+        #endregion
     }
 }

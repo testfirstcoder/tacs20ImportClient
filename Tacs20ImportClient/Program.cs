@@ -20,6 +20,8 @@ namespace Tacs20ImportClient
             Console.ReadKey();
             Console.WriteLine();
 
+            // Nach dem ersten Export können Variablen etc. einzelnen Anstellungen zugewiesen werden.
+            // Diese werden als nächstes importiert.
             Console.WriteLine("--- Nun werden die Zuweisungen zu den Anstellungen importiert ---");
             client.GetEmploymentAssignments().Wait();
             Console.WriteLine("--- Grundkonfiguration ist nun importiert ---");
@@ -28,11 +30,15 @@ namespace Tacs20ImportClient
             Console.ReadKey();
             Console.WriteLine();
 
+            // Sobald die Grundkonfiguration importiert wurde, müssen nur noch die Änderungen seit dem letzten 
+            // Import abgeholt werden.
             DateTime changesSince = new DateTime(2016, 05, 15);
             Console.WriteLine($"--- Import der Änderungen seit {changesSince} ---" + Environment.NewLine);
             client.GetChanges(changesSince).Wait();
-            Console.WriteLine("--- import of changes completed ---" + Environment.NewLine);
+            Console.WriteLine("--- Import der Änderungen beendet ---" + Environment.NewLine);
 
+            // Das changesSince-Datum für den nächsten Import auf "heute" setzen.
+            changesSince = DateTime.Today;
             Console.ReadKey();
         }
     }
