@@ -55,6 +55,14 @@ namespace Tacs20ImportClient
                     // Zuweisungen der Variablen, Nutzniesser und Statistikcodes zu den Organisationen abholen
                     ProcessOrganisations(await organisations);
 
+                    // Die Mappings zu anderen Katalogen importieren
+                    allTasks.Add(GetMappings(baseNavigation.MappingsUrl));
+
+                    // Massnahmen sind Variablen der tiefsten Hierarchiestufe und werden zusammen mit den 
+                    // Variablen zurückgegeben. Sie werden jedoch auch zu Dokumentationszwecken verwendet.
+                    // Deshalb bietet die API als Vereinfachung zusätzlich diese Ressource
+                    allTasks.Add(GetMassnahmen(baseNavigation.MassnahmenUrl));
+
                     Task.WaitAll(allTasks.ToArray());
                 }
             }
@@ -125,6 +133,12 @@ namespace Tacs20ImportClient
                     // Zuweisungen der Variablen, Nutzniesser und Statistikcode zu einzelnen Anstellungen abholen
                     allTasks.Add(ProcessAnstellungen(baseNavigation.AnstellungLink, changesSince));
 
+                    // Mappings ändern sich nur, wenn sich auch im Grundkatalog der Variablen etwas geändert hat.
+                    if ((await variablen).Any())
+                    {
+                        allTasks.Add(GetMappings(baseNavigation.MappingsUrl));
+                    }
+
                     Task.WaitAll(allTasks.ToArray());
                 }
             }
@@ -154,7 +168,9 @@ namespace Tacs20ImportClient
                 allTasks.Add(SaveData(nutzniesserRef, organisation.OrganisationId));
 
                 // Zuweisungen zu Personalkategorien innerhalb einer Organisation abholen
-                allTasks.Add(ProcessPersonalkategorien(organisation.PersonalkategorieUrl, organisation.OrganisationId));
+                string url = organisation.PersonalkategorieUrl;
+                string id = organisation.OrganisationId;
+                allTasks.Add(ProcessPersonalkategorien(url, id));
 
             }
 
@@ -175,7 +191,8 @@ namespace Tacs20ImportClient
             foreach (var organisation in organisations)
             {
                 // Den URLs den Query-Parameter changesSince hinzufügen
-                // Wenn es keine Änderungen gibt, ist die URL nicht belegt (wird in einer späteren Version implementiert)
+                // Wenn es keine Änderungen gibt, ist die URL nicht belegt 
+                // (wird in einer späteren Version implementiert)
                 var variablenUrl = string.IsNullOrEmpty(organisation.VariablenSetUrl)
                     ? null
                     : AddChangesSince(organisation.VariablenSetUrl, changesSince);
@@ -197,8 +214,9 @@ namespace Tacs20ImportClient
                 allTasks.Add(DeleteAndSave(statistikCodeRef, organisation.OrganisationId));
 
                 // Zuweisungen zu Personalkategorien innerhalb einer Organisation abholen
-                allTasks.Add(ProcessPersonalkategorien(organisation.PersonalkategorieUrl, organisation.OrganisationId,
-                    changesSince));
+                string url = organisation.PersonalkategorieUrl;
+                string organisationsId = organisation.OrganisationId;
+                allTasks.Add(ProcessPersonalkategorien(url, organisationsId, changesSince));
             }
 
             Task.WaitAll(allTasks.ToArray());
@@ -208,26 +226,28 @@ namespace Tacs20ImportClient
         /// Holt alle Zuweisungen der Variablen, Nutzniesser und Statistikcodes zu den Personalkategorien 
         /// (-typ, -gruppe) und speichert sie
         /// </summary>
-        /// <param name="personalkategorieUrl">Die URL, unter welcher die Personalkategorien abgeholt 
+        /// <param name="url">Die URL, unter welcher die Personalkategorien abgeholt 
         /// werden können</param>
         /// <param name="organisationId">Der tacs-Code der Organisation, zu welcher die Personalkategorien gehören</param>
-        private async Task ProcessPersonalkategorien(string personalkategorieUrl, string organisationId)
+        private async Task ProcessPersonalkategorien(string url, string organisationId)
         {
             // Personalkategorien sind nur Navigationsobjekte. Deshalb macht es keinen Sinn, die zu speichern.
-            var persKat = await GetCollection<PersonalkategorieNav>(personalkategorieUrl);
+            var persKat = await GetCollection<PersonalkategorieNav>(url);
+
             // Liste um alle Tasks zu synchronisieren.
             var allTasks = new List<Task>();
-            foreach (var personalkategorieNav in persKat)
+            foreach (var kategorieNav in persKat)
             {
                 // Die Zuweisungen vom Server holen
-                var variablenRef = GetCollection<VariablenRef>(personalkategorieNav.VariablenUrl);
-                var nutzniesserRef = GetCollection<NutzniesserRef>(personalkategorieNav.NutzniesserUrl);
-                var statistikCodeRef = GetCollection<StatistikCodeRef>(personalkategorieNav.StatistikCodeUrl);
+                var variablen = GetCollection<VariablenRef>(kategorieNav.VariablenUrl);
+                var nutzniesser = GetCollection<NutzniesserRef>(kategorieNav.NutzniesserUrl);
+                var codeRef = GetCollection<StatistikCodeRef>(kategorieNav.StatistikCodeUrl);
 
                 // Die Daten speichern
-                allTasks.Add(SaveData(variablenRef, organisationId, personalkategorieNav.PersonalkategorieId));
-                allTasks.Add(SaveData(nutzniesserRef, organisationId, personalkategorieNav.PersonalkategorieId));
-                allTasks.Add(SaveData(statistikCodeRef, organisationId, personalkategorieNav.PersonalkategorieId));
+                string id = kategorieNav.PersonalkategorieId;
+                allTasks.Add(SaveData(variablen, organisationId, id));
+                allTasks.Add(SaveData(nutzniesser, organisationId, id));
+                allTasks.Add(SaveData(codeRef, organisationId, id));
             }
 
             Task.WaitAll(allTasks.ToArray());
@@ -237,22 +257,22 @@ namespace Tacs20ImportClient
         /// Holt alle Änderungen der Zuweisungen der Variablen, Nutzniesser und Statistikcodes zu den 
         /// Personalkategorien (-typ, -gruppe) und speichert sie
         /// </summary>
-        /// <param name="personalkategorieUrl">Die URL, unter welcher die Personalkategorien abgeholt 
+        /// <param name="url">Die URL, unter welcher die Personalkategorien abgeholt 
         /// werden können</param>
         /// <param name="organisationId">Der tacs-Code der Organisation, zu welcher die Personalkategorien gehören</param>
         /// <param name="changesSince">Das Datum der letzten Synchronisation</param>
-        private async Task ProcessPersonalkategorien(string personalkategorieUrl, string organisationId, DateTime changesSince)
+        private async Task ProcessPersonalkategorien(string url, string organisationId, DateTime changesSince)
         {
-            personalkategorieUrl = AddChangesSince(personalkategorieUrl, changesSince);
-            var persKat = await GetCollection<PersonalkategorieNav>(personalkategorieUrl);
+            url = AddChangesSince(url, changesSince);
+            var persKat = await GetCollection<PersonalkategorieNav>(url);
 
             // Liste um alle Tasks zu synchronisieren.
             var allTasks = new List<Task>();
             foreach (var nav in persKat)
             {
-
                 // Den URLs den Query-Parameter changesSince hinzufügen
-                // Wenn es keine Änderungen gibt, ist die URL nicht belegt (wird in einer späteren Version implementiert)
+                // Wenn es keine Änderungen gibt, ist die URL nicht belegt 
+                // (wird in einer späteren Version implementiert)
                 var variablenUrl = string.IsNullOrEmpty(nav.VariablenUrl)
                     ? null
                     : AddChangesSince(nav.VariablenUrl, changesSince);
@@ -349,6 +369,23 @@ namespace Tacs20ImportClient
             Task.WaitAll(allTasks.ToArray());
         }
 
+        private static async Task GetMassnahmen(string massnahmenUrl)
+        {
+            // Diese Ressource wurde noch nicht umgesetzt. Die Funktionalität und der Beispielcode sind für die 
+            // zweite Jahreshälfte 2016 geplant.
+        }
+
+        /// <summary>
+        /// Hier wird demonstriert, wie die Mappings zu Fremdkatalogen abgeholt werden
+        /// </summary>
+        /// <param name="mappingsUrl">URL zur Ressource</param>
+        /// <returns>Ein Task für die Asynchronität</returns>
+        private static async Task GetMappings(string url)
+        {
+            // Diese Ressource wurde noch nicht umgesetzt. Die Funktionalität und der Beispielcode sind für die 
+            // zweite Jahreshälfte 2016 geplant.
+        }
+
         /// <summary>
         /// Liest die Daten von der REST-Schnittstelle, deserialisiert sie und gibt sie zurück
         /// </summary>
@@ -417,9 +454,9 @@ namespace Tacs20ImportClient
             await data;
         }
 
-        private static string AddChangesSince(string statistikCodeUrl, DateTime changesSince)
+        private static string AddChangesSince(string url, DateTime changesSince)
         {
-            return string.Concat(statistikCodeUrl, "?changesSince=", changesSince.ToString("yyyy-MM-dd"));
+            return string.Concat(url, "?changesSince=", changesSince.ToString("yyyy-MM-dd"));
         }
 
         private async Task<TokenResponse> GetToken()

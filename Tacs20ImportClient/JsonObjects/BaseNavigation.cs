@@ -1,4 +1,6 @@
-﻿namespace Tacs20ImportClient.JsonObjects
+﻿using System.Security.AccessControl;
+
+namespace Tacs20ImportClient.JsonObjects
 {
     /// <summary>
     /// Einstiegspunkt der Schnittstelle. Stellt URLs zur Verfügung, um die Daten abzuholen
@@ -31,6 +33,14 @@
         /// zugewiesen bekamen
         /// </summary>
         public string AnstellungLink { get; set; }
+        /// <summary>
+        /// URL zur Ressource, die alle Massnahmen und deren Parentvariablen zurückgibt.
+        /// </summary>
+        public string MassnahmenUrl { get; set; }
+        /// <summary>
+        /// URL zur Ressource, die die Mappings zu Dritt-Katalogen zurückgibt
+        /// </summary>
+        public string MappingsUrl { get; set; }
         #endregion
     }
 }
