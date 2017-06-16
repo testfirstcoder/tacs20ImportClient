@@ -467,16 +467,17 @@ namespace Tacs20ImportClient
                 {
                     httpClient.BaseAddress = new Uri("https://auth.cloudaccess.ch");
 
-                    var formData = new FormUrlEncodedContent(new List<KeyValuePair<string, string>>
+                    var formData = new Dictionary<string, string>
                     {
-                        new KeyValuePair<string, string>("client_id", _clientId),
-                        new KeyValuePair<string, string>("client_secret", _clientSecret),
-                        new KeyValuePair<string, string>("grant_type", "client_credentials"),
-                        new KeyValuePair<string, string>("scope", "code"),
-                        new KeyValuePair<string, string>("resource", _resource)
-                    });
+                        ["client_id"] = _clientId,
+                        ["client_secret"] = _clientSecret,
+                        ["grant_type"] = "client_credentials",
+                        ["scope"] = "code",
+                        ["resource"] = _resource
+                    };
 
-                    HttpResponseMessage response = await httpClient.PostAsync("connect/token", formData);
+                    HttpResponseMessage response = await httpClient.PostAsync("connect/token", new FormUrlEncodedContent(formData));
+                    
                     string content = await response.Content.ReadAsStringAsync();
 
                     _currentToken = new TokenResponse(content);
